@@ -43,8 +43,8 @@ You will be prompted to select an architecture and a stage3 tarball to download.
 
 To install this script, simply clone this repository and make the script executable:
 ```bash
-git clone https://github.com/your-username/gentoo-stage3-downloader.git
-cd gentoo-stage3-downloader
+git clone https://github.com/minihub/gentoo.git
+cd gentoo
 chmod +x gentoo-stage3-downloader.sh
 ```
 ## Contributing

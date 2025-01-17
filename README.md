@@ -55,6 +55,4 @@ Contributions are welcome! If you have any suggestions or bug reports, please op
 ## License
 
 
-This script is licensed under the MIT License. See the LICENSE file for more information.
-
-I hope this README helps! Let me know if you need any further assistance.
+This script is licensed under the MIT License. See the [LICENSE](https://github.com/minihub/github/blob/main/LICENSE) file for more information.

@@ -6,24 +6,66 @@
 # It provides a simple and convenient way to obtain the latest Gentoo Stage3 tarball,
 # which can be used to install Gentoo Linux on a new system.
 
+# Function to display the script version
+show_version() {
+    echo "Gentoo Stage3 Downloader version 1.0"
+    exit 0
+}
+
+# Function to display the script help
+show_help() {
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  -v  Show version information"
+    echo "  -h  Show this help message"
+    echo "  -d  Enable debug mode"
+    echo ""
+    echo "Description:"
+    echo "  This script downloads the latest Gentoo Stage3 tarball for a specified architecture."
+    echo "  It provides a simple and convenient way to obtain the latest Gentoo Stage3 tarball,"
+    echo "  which can be used to install Gentoo Linux on a new system."
+    exit 0
+}
+
+# Logging function with debug support
+log_message() {
+    local level="$1"
+    local message="$2"
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    
+    # Only show debug messages if DEBUG is set
+    if [ "$level" == "DEBUG" ] && [ -z "${DEBUG:-}" ]; then
+        return
+    fi
+
+    case "$level" in
+        DEBUG)
+            echo -e "${GENTOO_DARK_GRAY}[DEBUG] $timestamp - $message${NC}" >&2
+            ;;
+        INFO)
+            echo "[INFO] $timestamp - $message"
+            ;;
+        WARN)
+            echo -e "${GENTOO_LIGHT_PURPLE}[WARN] $timestamp - $message${NC}" >&2
+            ;;
+        ERROR)
+            echo -e "${RED}[ERROR] $timestamp - $message${NC}" >&2
+            ;;
+    esac
+}
+
 # Parse command-line options
-while getopts ":vh" opt; do
+while getopts ":vhd" opt; do
     case $opt in
         v)
-            echo "Gentoo Stage3 Downloader version 1.0"
-            exit 0
+            show_version
             ;;
         h)
-            echo "Usage: $0 [options]"
-            echo "Options:"
-            echo "  -v  Show version information"
-            echo "  -h  Show this help message"
-            echo ""
-            echo "Description:"
-            echo "  This script downloads the latest Gentoo Stage3 tarball for a specified architecture."
-            echo "  It provides a simple and convenient way to obtain the latest Gentoo Stage3 tarball,"
-            echo "  which can be used to install Gentoo Linux on a new system."
-            exit 0
+            show_help
+            ;;
+        d)
+            DEBUG=1
+            log_message "DEBUG" "Debug mode enabled."
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
@@ -67,33 +109,9 @@ setup_logging() {
 
     # Rotate logs (keep last 7 days)
     find "$log_dir" -name "downloads_*.log" -mtime +7 -delete 2>/dev/null || true
-}
 
-# Logging function with debug support
-log_message() {
-    local level="$1"
-    local message="$2"
-    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-    
-    # Only show debug messages if DEBUG is set
-    if [ "$level" == "DEBUG" ] && [ -z "${DEBUG:-}" ]; then
-        return
-    fi
-
-    case "$level" in
-        DEBUG)
-            echo -e "${GENTOO_DARK_GRAY}[DEBUG] $timestamp - $message${NC}" >&2
-            ;;
-        INFO)
-            echo "[INFO] $timestamp - $message"
-            ;;
-        WARN)
-            echo -e "${GENTOO_LIGHT_PURPLE}[WARN] $timestamp - $message${NC}" >&2
-            ;;
-        ERROR)
-            echo -e "${RED}[ERROR] $timestamp - $message${NC}" >&2
-            ;;
-    esac
+    # Redirect all output to the log file
+    exec > >(tee -a "$log_file") 2>&1
 }
 
 # Dependency checking function
@@ -111,24 +129,36 @@ check_dependencies() {
 validate_input() {
     local input="$1"
     local max="$2"
-    
+    local type="${3:-numeric}"  # Default to numeric validation
+
     # Check if input is empty
     if [ -z "$input" ]; then
         log_message "ERROR" "Input cannot be empty."
         return 1
     fi
 
-    # Check if input is a positive integer
-    if [[ ! "$input" =~ ^[1-9][0-9]*$ ]]; then
-        log_message "ERROR" "Invalid input. Please enter a positive number."
-        return 1
-    fi
+    case "$type" in
+        numeric)
+            # Check if input is a positive integer
+            if [[ ! "$input" =~ ^[1-9][0-9]*$ ]]; then
+                log_message "ERROR" "Invalid input. Please enter a positive number."
+                return 1
+            fi
 
-    # Check if input is within range
-    if [ "$input" -lt 1 ] || [ "$input" -gt "$max" ]; then
-        log_message "ERROR" "Selection out of range (1-$max)."
-        return 1
-    fi
+            # Check if input is within range
+            if [ "$input" -lt 1 ] || [ "$input" -gt "$max" ]; then
+                log_message "ERROR" "Selection out of range (1-$max)."
+                return 1
+            fi
+            ;;
+        alphanumeric)
+            # Add alphanumeric validation logic here
+            ;;
+        *)
+            log_message "ERROR" "Unknown validation type: $type"
+            return 1
+            ;;
+    esac
 
     return 0
 }
@@ -168,14 +198,15 @@ print_banner() {
     echo "                                           ."
     echo "     .vir.                                d\$b"
     echo "  .d\$\$\$\$\$\$b.    .cd\$\$\$b.     .d\$\$\$b.   d\$\$\$\$\$\$\$\$\$\$b  .d\$\$\$b."
-    echo "  \$\$\$\$( )\$\$\$b d\$\$\$()$\$\$\$.   d\$\$\$\$\$\$b Q\$\$\$\$\$\$\$\$P\$\$\$P.\$\$\$\$\$\$\$b.  .\$\$\$\$\$\$\$b."
-    echo "  Q\$\$\$\$\$\$\$\$\$B\$\$\$\$\$\$\$\$P\"  d\$\$\$PQ\$\$\$\$b.   \$\$\$\$\$.   .\$\$\$P' \`\$\$\$ .\$\$\$P' \`\$\$\$"
-    echo "    \"\$\$\$\$\$\$P Q\$\$\$\$\$\$\$b  d\$\$\$P   Q\$\$\$\$b  \$\$\$\$b   \$\$\$\$b..d\$\$\$ \$\$\$\$b..d\$\$\$"
-    echo "   d\$\$\$\$\$\$P\"   \"\$\$\$\$\$\$\$\$ Q\$\$\$     Q\$\$\$\$  \$\$\$\$\$   \`Q\$\$\$\$\$\$\$P  \`Q\$\$\$\$\$\$P"
-    echo "  \$\$\$\$\$\$P       \`\"\"\"\"\"   \"\"        \"\"   Q\$\$\$P     \"Q\$\$\$P\"     \"Q\$\$\$P\""
+    echo "  \$\$\$( )\$\$\$b d\$\$\$()$\$\$\$.   d\$\$\$\$\$\$b Q\$\$\$\$\$\$\$P\$\$\$P.\$\$\$\$\$\$\$b.  .\$\$\$\$\$\$\$b."
+    echo "  Q\$\$\$\$\$\$\$\$B\$\$\$\$\$\$\$\$P\"  d\$\$\$PQ\$\$\$\$b.   \$\$\$\$\$.   .\$\$\$P' \`\$\$\$ .\$\$\$P' \`\$\$\$"
+    echo "    \"\$\$\$\$\$P Q\$\$\$\$\$\$\$b  d\$\$\$P   Q\$\$\$\$b  \$\$\$\$b   \$\$\$\$b..d\$\$\$ \$\$\$\$b..d\$\$\$"
+    echo "   d\$\$\$\$\$P\"   \"\$\$\$\$\$\$\$\$ Q\$\$\$     Q\$\$\$\$  \$\$\$\$\$   \`Q\$\$\$\$\$\$\$P  \`Q\$\$\$\$\$\$P"
+    echo "  \$\$\$\$\$P       \`\"\"\"\"\"   \"\"        \"\"   Q\$\$\$P     \"Q\$\$\$P\"     \"Q\$\$\$P\""
     echo "  \`Q\$\$P\"                                  \"\"\"         "
     echo ""
     echo -e "${GENTOO_LIGHT_PURPLE}$SCRIPT_DESCRIPTION${NC}"
+    echo -e "${GENTOO_DARK_GRAY}Version: 1.0 | Date: $(date +%Y-%m-%d)${NC}"
     echo ""
 }
 
@@ -282,7 +313,7 @@ verify_download() {
     return 0
 }
 
-# Main download and selection function
+# Function to process stage3 entries
 process_stage3_entries() {
     local ARCH="$1"
     local TEMP_FILE
@@ -388,13 +419,22 @@ process_stage3_entries() {
     return 0
 }
 
-# Main script execution
-main() {
-    setup_logging
-    check_dependencies
-    print_banner
+# Function to handle interrupts
+handle_interrupt() {
+    log_message "WARN" "Script interrupted by user."
+    cleanup
+    exit 1
+}
 
-    # Prompt for architecture selection
+# Function to clean up temporary files
+cleanup() {
+    if [ -n "${TEMP_FILE:-}" ] && [ -f "$TEMP_FILE" ]; then
+        rm -f "$TEMP_FILE"
+    fi
+}
+
+# Function to select architecture
+select_architecture() {
     echo -e "${GENTOO_LIGHT_PURPLE}Available architectures:"
     for i in "${!ARCHITECTURES[@]}"; do
         echo -e "${GENTOO_DARK_GRAY}$((i + 1)): ${ARCHITECTURES[$i]%%:*} - ${ARCHITECTURES[$i]##*:}"
@@ -408,7 +448,15 @@ main() {
         exit 1
     fi
 
-    local selected_arch="${ARCHITECTURES[$((arch_selection - 1))]%%:*}"
+    selected_arch="${ARCHITECTURES[$((arch_selection - 1))]%%:*}"
+}
+
+# Main script execution
+main() {
+    setup_logging
+    check_dependencies
+    print_banner
+    select_architecture
     process_stage3_entries "$selected_arch"
 }
 
